@@ -1,5 +1,14 @@
 {
-  "args": "run external.js",
-  "output": "external.js.out",
-  "exitCode": 1
+  "tests": {
+    "allow_read": {
+      "args": "run --allow-read=original.ts external.js",
+      "output": "external.js.out",
+      "exitCode": 1
+    },
+    "deny_read": {
+      "args": "run external.js",
+      "output": "external.no_permission.out",
+      "exitCode": 1
+    }
+  }
 }

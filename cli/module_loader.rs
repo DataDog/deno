@@ -1912,7 +1912,23 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
         return None;
       }
       None => {
-        // Not in graph, try to read from file system (for source-mapped original files)
+        // Source mapped original files may not be in the graph. Avoid turning
+        // stack trace formatting into an unpermissioned filesystem read.
+        let specifier = if specifier.scheme() == "file" {
+          let path = deno_path_util::url_to_file_path(&specifier).ok()?;
+          let permissions = self.0.permissions.deep_clone_without_prompt();
+          let path = permissions
+            .check_open(
+              Cow::Owned(path),
+              deno_runtime::deno_permissions::OpenAccessKind::Read,
+              Some("stack trace source line"),
+            )
+            .ok()?;
+          deno_path_util::url_from_file_path(&path).ok()?
+        } else {
+          specifier
+        };
+
         if let Ok(Some(file)) = self
           .0
           .shared
