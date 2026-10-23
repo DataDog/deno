@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   group: upstream-v8-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   linux:
@@ -33,6 +33,10 @@ jobs:
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '8'
       DENO_NO_UPDATE_CHECK: '1'
       RUST_BACKTRACE: '1'
+      RUSTC_WRAPPER: sccache
+      CARGO_INCREMENTAL: '0'
+      SCCACHE_DIR: ${{ github.workspace }}/target/sccache
+      SCCACHE_CACHE_SIZE: 2G
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
@@ -55,11 +59,59 @@ jobs:
           echo "LIBCLANG_PATH=$GITHUB_WORKSPACE/target/upstream-v8/rusty_v8/third_party/llvm-libclang/lib" >> "$GITHUB_ENV"
           echo "$GITHUB_WORKSPACE/target/upstream-v8/tools/gn" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/target/upstream-v8/tools/ninja" >> "$GITHUB_PATH"
+      - name: Install compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.18.0
+      - name: Validate build cache identities
+        id: cache-keys
+        run: python3 tools/upstream_v8/cache.py
+      - name: Restore compiler cache
+        id: compiler-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: target/sccache
+          key: ${{ steps.cache-keys.outputs.sccache_key }}
+          restore-keys: ${{ steps.cache-keys.outputs.sccache_prefix }}
+      - name: Restore Cargo dependencies and build outputs
+        id: cargo-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/release/.fingerprint
+            target/release/build
+            target/release/deps
+          key: ${{ steps.cache-keys.outputs.cargo_key }}
+          restore-keys: ${{ steps.cache-keys.outputs.cargo_prefix }}
+      - name: Start compiler cache
+        run: sccache --start-server
       - name: Build Deno from source
         run: |
           cargo build --release --locked -p deno
-          ./target/release/deno --version
           echo "$GITHUB_WORKSPACE/target/release" >> "$GITHUB_PATH"
+      - name: Flush compiler cache and report statistics
+        run: sccache --stop-server
+      - name: Save compiler cache before tests
+        if: github.event_name == 'push' && github.ref == 'refs/heads/julesdt/upstream-v8-stable' && steps.compiler-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: target/sccache
+          key: ${{ steps.cache-keys.outputs.sccache_key }}
+      - name: Save Cargo dependencies and build outputs before tests
+        if: github.event_name == 'push' && github.ref == 'refs/heads/julesdt/upstream-v8-stable' && steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/release/.fingerprint
+            target/release/build
+            target/release/deps
+          key: ${{ steps.cache-keys.outputs.cargo_key }}
+      - name: Check rebuilt Deno version
+        run: deno --version
       - name: Test core against the rebuilt engine
         run: cargo test --release --locked -p deno_core --lib
       - name: Validate and package

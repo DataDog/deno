@@ -42,6 +42,29 @@ package to durable internal artifact storage before pinning it in a Synthetics
 image; this workflow does not publish to upstream Deno's storage or deploy a
 service.
 
+## CI build caches
+
+CI uses pinned sccache for V8 C++ compilation and cacheable Rust compilation,
+with a 2 GB local compiler cache persisted through GitHub Actions. A separate
+cache retains Cargo registry/git dependencies and release fingerprints, build
+script outputs and compiled dependencies. The large GN build directory and
+prepared source checkouts are regenerated; compiler-cache hits avoid repeating
+the expensive C++ work.
+
+`cache.py` validates every required identity input before restoring anything.
+Cache prefixes include the runner image, platform, compiler versions, release
+settings, source pins, patches, Cargo manifests/lockfile and build
+configuration. Missing, empty or zero identity inputs fail the job. A commit
+suffix permits saving updated outputs while reusing earlier entries with the
+same complete configuration. Workflow-only changes do not invalidate that
+configuration.
+
+Only pushes to this branch save caches, immediately after a successful build and
+before runtime tests. Tests and packaging always run, including on cache hits.
+The compiler-cache statistics show actual reuse; the first run populates the
+caches and does not establish warm-build timing. New builds queue behind an
+active build to preserve compilation progress.
+
 ## Patch ownership
 
 The Rust binding crate is pinned to upstream commit
