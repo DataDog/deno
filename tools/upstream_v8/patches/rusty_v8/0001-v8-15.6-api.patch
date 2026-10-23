@@ -1,5 +1,5 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 9b16d47..7fe0347 100644
+index 9b16d47..261fad7 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -14,6 +14,7 @@ static_library("rusty_v8") {
@@ -10,6 +10,14 @@ index 9b16d47..7fe0347 100644
      "//third_party/simdutf:simdutf",
    ]
    configs -= [
+@@ -28,6 +29,7 @@ config("rusty_v8_config") {
+     "//v8:external_config",
+     "//v8:toolchain",
+     "//v8:features",
++    "//v8:simdutf_include_config",
+   ]
+   cflags = []
+   if (is_win) {
 diff --git a/build.rs b/build.rs
 index 15d31eb..85dd211 100644
 --- a/build.rs
