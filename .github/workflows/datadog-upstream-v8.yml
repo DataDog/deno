@@ -56,7 +56,7 @@ jobs:
           echo "$GITHUB_WORKSPACE/target/upstream-v8/tools/gn" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/target/upstream-v8/tools/ninja" >> "$GITHUB_PATH"
       - name: Build Deno from source
-        run: cargo build --release --locked -p deno -vv
+        run: cargo build --release --locked -p deno
       - name: Test core against the rebuilt engine
         run: cargo test --release --locked -p deno_core --lib
       - name: Validate and package
