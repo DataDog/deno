@@ -4,6 +4,7 @@
 # never silently substitute the published rusty_v8 archive on this branch.
 [patch.crates-io]
 v8 = { path = "target/upstream-v8/rusty_v8" }
+bindgen = { path = "target/upstream-v8/bindgen/bindgen" }
 
 [workspace]
 resolver = "2"

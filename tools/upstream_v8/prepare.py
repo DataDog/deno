@@ -106,10 +106,14 @@ def prepare(bindings_only=False, toolchains=False):
     if toolchains and (platform.system() != "Linux" or platform.machine() != "x86_64"):
         raise ValueError("Toolchain installation requires Linux x86_64")
     manifest = json.loads((HERE / "sources.json").read_text())
-    all_sources = [manifest["rusty_v8"], manifest["v8"], *manifest["dependencies"]]
+    all_sources = [manifest["rusty_v8"], manifest["bindgen"], manifest["v8"], *manifest["dependencies"]]
     for source in all_sources:
         validate_source(source)
     checkout(manifest["rusty_v8"], SOURCES)
+    bindgen = SOURCES.parent / "bindgen"
+    checkout(manifest["bindgen"], bindgen)
+    for patch in sorted((HERE / "patches" / "bindgen").glob("*.patch")):
+        apply_patch(bindgen, patch)
     if bindings_only:
         return
     checkout(manifest["v8"], SOURCES / "v8")

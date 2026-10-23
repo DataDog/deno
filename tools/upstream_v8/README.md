@@ -58,6 +58,16 @@ GN's explicit target arguments determine the bindings.
 `patches/rusty_v8/0001-v8-15.6-api.patch` adapts removed C++ APIs and accessor
 callbacks, and uses the now-unconditional garbage-collected microtask queues.
 Heap termination is left to the V8 heap destructor, as required by this engine.
+Rust bindings are generated before native compilation so header compatibility
+errors fail early.
+
+`patches/bindgen/0001-recursive-union-layout.patch` patches bindgen 0.72.1 at
+`d874de8d646d9b8a3e7ba2db2bcd52f2fba8f1f5`. It avoids computing a layout for an
+uninstantiated union template, fixing the panic triggered by this libc++'s
+recursive `__union` type
+([bindgen issue #3397](https://github.com/rust-lang/rust-bindgen/issues/3397)).
+The patch includes a regression test and does not alter the V8 or libc++
+sources.
 
 The Deno changes use scoped local handles for the newer binding API, retain
 owned microtask queue handles in Node VM contexts, and update property callback

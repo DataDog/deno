@@ -4,6 +4,10 @@
   "chromium_channel": "Stable",
   "chromium_platform": "Linux",
   "v8_version": "15.6.75.19",
+  "bindgen": {
+    "repository": "https://github.com/rust-lang/rust-bindgen.git",
+    "revision": "d874de8d646d9b8a3e7ba2db2bcd52f2fba8f1f5"
+  },
   "rusty_v8": {
     "repository": "https://github.com/denoland/rusty_v8.git",
     "revision": "55ca54ea97dbfcf80c5457924861b681bd83def2"

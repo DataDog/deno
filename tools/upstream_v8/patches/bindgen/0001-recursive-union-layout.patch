@@ -1,0 +1,60 @@
+diff --git a/bindgen/Cargo.toml b/bindgen/Cargo.toml
+index 7a6764c..1f76820 100644
+--- a/bindgen/Cargo.toml
++++ b/bindgen/Cargo.toml
+@@ -1,6 +1,7 @@
+ lints.workspace = true
+ 
+ [package]
++workspace = ".."
+ authors = [
+     "Jyun-Yan You <jyyou.tw@gmail.com>",
+     "Emilio Cobos Álvarez <emilio@crisal.io>",
+diff --git a/bindgen/ir/comp.rs b/bindgen/ir/comp.rs
+index 655e0f1..d72db35 100644
+--- a/bindgen/ir/comp.rs
++++ b/bindgen/ir/comp.rs
+@@ -1118,6 +1118,13 @@ impl CompInfo {
+             return None;
+         }
+ 
++        // Uninstantiated union templates have no layout. Recursing into their
++        // fields can revisit a temporarily loaned item (libc++'s __union).
++        // https://github.com/rust-lang/rust-bindgen/issues/3397
++        if !self.template_params.is_empty() {
++            return None;
++        }
++
+         let mut max_size = 0;
+         // Don't allow align(0)
+         let mut max_align = 1;
+diff --git a/bindgen/lib.rs b/bindgen/lib.rs
+index b2fecc2..5cc3a3a 100644
+--- a/bindgen/lib.rs
++++ b/bindgen/lib.rs
+@@ -1312,6 +1312,25 @@ impl callbacks::ParseCallbacks for CargoCallbacks {
+     }
+ }
+ 
++#[test]
++fn recursive_union_template_in_unlisted_headers() {
++    // libc++'s aligned_union uses this recursive template. Even when the
++    // template is not emitted, bindgen still traverses it during IR analysis.
++    let bindings = Builder::default()
++        .header_contents(
++            "recursive_union.hpp",
++            "template <class T, class... Rest> union RUnion { T value; RUnion<Rest...> rest; };\n\
++             template <class T> union RUnion<T> { T value; };\n\
++             struct Wrap { RUnion<int, float> value; };\n\
++             static unsigned v8__SIZE = sizeof(Wrap);",
++        )
++        .clang_args(["-x", "c++", "-std=c++20"])
++        .allowlist_var("v8__SIZE")
++        .generate()
++        .expect("recursive union templates must not panic");
++    assert!(bindings.to_string().contains("v8__SIZE"));
++}
++
+ /// Test `command_line_flag` function.
+ #[test]
+ fn commandline_flag_unit_test_function() {

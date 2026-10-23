@@ -32,6 +32,7 @@ jobs:
       CARGO_PROFILE_RELEASE_LTO: thin
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '8'
       DENO_NO_UPDATE_CHECK: '1'
+      RUST_BACKTRACE: '1'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
@@ -55,7 +56,7 @@ jobs:
           echo "$GITHUB_WORKSPACE/target/upstream-v8/tools/gn" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/target/upstream-v8/tools/ninja" >> "$GITHUB_PATH"
       - name: Build Deno from source
-        run: cargo build --release --locked -p deno
+        run: cargo build --release --locked -p deno -vv
       - name: Test core against the rebuilt engine
         run: cargo test --release --locked -p deno_core --lib
       - name: Validate and package

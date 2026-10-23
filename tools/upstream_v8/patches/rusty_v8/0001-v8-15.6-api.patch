@@ -19,10 +19,28 @@ index 9b16d47..261fad7 100644
    cflags = []
    if (is_win) {
 diff --git a/build.rs b/build.rs
-index 15d31eb..85dd211 100644
+index 15d31eb..2686729 100644
 --- a/build.rs
 +++ b/build.rs
-@@ -2147,6 +2147,18 @@ pub fn build(target: &str, maybe_env: Option<NinjaEnv>) {
+@@ -143,7 +143,6 @@ fn main() {
+     }
+ 
+     build_v8(is_asan);
+-    build_binding();
+ 
+     return;
+   }
+@@ -690,6 +689,9 @@ fn build_v8(is_asan: bool) {
+   if env_bool("PRINT_GN_ARGS") {
+     print_gn_args(&gn_out);
+   }
++  // Public-header bindings only need GN's defines. Validate them before the
++  // expensive native build so header/tooling regressions fail immediately.
++  build_binding();
+   build("rusty_v8", None);
+ }
+ 
+@@ -2147,6 +2149,18 @@ pub fn build(target: &str, maybe_env: Option<NinjaEnv>) {
  
    rerun_if_changed(&gn_out_dir, maybe_env.clone(), target);
  

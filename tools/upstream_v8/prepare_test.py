@@ -12,7 +12,7 @@ from prepare import HERE, validate_source
 class PreparationTest(unittest.TestCase):
     def test_source_manifest_is_pinned(self):
         manifest = json.loads((HERE / "sources.json").read_text())
-        for source in [manifest["rusty_v8"], manifest["v8"], *manifest["dependencies"]]:
+        for source in [manifest["rusty_v8"], manifest["bindgen"], manifest["v8"], *manifest["dependencies"]]:
             validate_source(source)
         paths = [source["path"] for source in manifest["dependencies"]]
         self.assertEqual(len(paths), len(set(paths)))
