@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.request
 from pathlib import Path, PurePosixPath
 
@@ -44,6 +45,21 @@ def validate_source(source):
             raise ValueError(f"Invalid dependency path: {source['path']!r}")
 
 
+def fetch_revision(revision, destination):
+    # Large Chromium repositories can disconnect mid-pack. Retry the same
+    # immutable revision, but still fail if the remote remains unavailable.
+    for attempt in range(3):
+        try:
+            run("git", "fetch", "--depth=1", "origin", revision, cwd=destination)
+            return
+        except subprocess.CalledProcessError:
+            if attempt == 2:
+                raise
+            delay = 2 ** (attempt + 1)
+            print(f"Source fetch failed; retrying in {delay}s", flush=True)
+            time.sleep(delay)
+
+
 def checkout(source, destination):
     validate_source(source)
     destination.mkdir(parents=True, exist_ok=True)
@@ -58,7 +74,7 @@ def checkout(source, destination):
         cwd=destination, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     ).returncode == 0
     if not exists:
-        run("git", "fetch", "--depth=1", "origin", source["revision"], cwd=destination)
+        fetch_revision(source["revision"], destination)
     run("git", "checkout", "--detach", source["revision"], cwd=destination)
     actual = run("git", "rev-parse", "HEAD", cwd=destination, capture=True).strip()
     if actual != source["revision"]:
