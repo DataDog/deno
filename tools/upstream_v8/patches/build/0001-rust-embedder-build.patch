@@ -1,0 +1,304 @@
+diff --git a/.gitignore b/.gitignore
+index 3bff996..f236729 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -6,7 +6,6 @@ ciopfs
+ /android/binary_size/apks/**/*.apk
+ /args/chromeos/*.gni
+ /args/chromeos/rewrapper*
+-/config/gclient_args.gni
+ /cros_cache/
+ /Debug
+ /Debug_x64
+@@ -16,6 +15,7 @@ ciopfs
+ /Release_x64
+ /win_toolchain.json
+ /util/LASTCHANGE*
++!/util/LASTCHANGE.committime
+ /util/support
+ /x64/
+ /linux/debian_*-sysroot/
+diff --git a/config/c++/BUILD.gn b/config/c++/BUILD.gn
+index 8975d68..436f71f 100644
+--- a/config/c++/BUILD.gn
++++ b/config/c++/BUILD.gn
+@@ -1,4 +1,5 @@
+ import("//build/config/c++/c++.gni")
++import("//build/toolchain/toolchain.gni")
+ import("//build/config/c++/modules.gni")
+ import("//build/config/chrome_build.gni")
+ import("//build/config/compiler/compiler.gni")
+@@ -19,6 +20,19 @@ config("runtime_library") {
+   ldflags = []
+   libs = []
+ 
++  # V8's bundled libc++ gates its ctype rune table on __GLIBC__, which
++  # musl doesn't define; use libc++'s portable default rune table and
++  # flag musl for the remaining locale differences. Target only.
++  if (use_musl && current_toolchain == default_toolchain) {
++    defines += [
++      "_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE",
++      "_LIBCPP_HAS_MUSL_LIBC",
++    ]
++    # The musl sysroot has no gcc runtime (crtbegin/libgcc); use
++    # clang's bundled compiler-rt for the C runtime instead.
++    ldflags += [ "-rtlib=compiler-rt" ]
++  }
++
+   # Fixed libc++ configuration macros are in
+   # buildtools/third_party/libc++/__config_site. This config only has defines
+   # that vary depending on gn args, and non-define flags.
+diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
+index c106acf..bec888c 100644
+--- a/config/compiler/BUILD.gn
++++ b/config/compiler/BUILD.gn
+@@ -210,6 +210,18 @@ declare_args() {
+   # away from the opt-in wexit_time_destructors config, and into the default
+   # compiler config.
+   is_wexit_time_destructors_default = build_with_chromium
++
++  # Limits the debuginfo that gets generated in "minimal symbols" mode to just
++  # line tables. This flag only has any effect when `symbol_level` is set to 1.
++  line_tables_only = false
++
++  # When building with `clang -g1`, a large amount of debug data is added to
++  # the final executable, mostly in the form of `DW_TAG_inlined_subroutine` tags
++  # or its COFF equivalent. Leaving out those tags reduces the size of the debug
++  # sections to a much more reasonable 5MB while still providing pretty usable
++  # stack traces when the application crashes. This flag only has any effect
++  # when `symbol_level` is set to 1.
++  no_inline_line_tables = false
+ }
+ 
+ declare_args() {
+@@ -675,7 +687,7 @@ config("compiler") {
+     # It also causes segfault on Linux s390x:
+     # https://github.com/llvm/llvm-project/issues/149511
+     if (is_linux && use_lld && current_cpu != "arm" && current_cpu != "s390x") {
+-      cflags += [ "-Wa,--crel,--allow-experimental-crel" ]
++      # cflags += [ "-Wa,--crel,--allow-experimental-crel" ]
+     }
+   }
+ 
+@@ -3082,10 +3094,15 @@ config("symbols") {
+ config("minimal_symbols") {
+   configs = []
+   rustflags = []
++  cflags = []
++  ldflags = []
++
++  if (is_clang && no_inline_line_tables) {
++    cflags += [ "-gno-inline-line-tables" ]
++  }
++
+   if (is_win) {
+     # Functions, files, and line tables only.
+-    cflags = []
+-
+     if (is_clang) {
+       cflags += [
+         # Disable putting the compiler command line into the debug info to
+@@ -3095,25 +3112,17 @@ config("minimal_symbols") {
+     }
+     if (is_clang && use_lld && use_ghash) {
+       cflags += [ "-gcodeview-ghash" ]
+-      ldflags = [ "/DEBUG:GHASH" ]
++      ldflags += [ "/DEBUG:GHASH" ]
+     } else {
+-      ldflags = [ "/DEBUG" ]
++      ldflags += [ "/DEBUG" ]
+     }
+ 
+     # All configs using /DEBUG should include this:
+     configs = [ ":win_pdbaltpath" ]
+-
+-    # Enable line tables for clang. MSVC doesn't have an equivalent option.
+-    if (is_clang) {
+-      # -gline-tables-only is the same as -g1, but clang-cl only exposes the
+-      # former.
+-      cflags += [ "-gline-tables-only" ]
+-    }
+   } else {
+     if (use_debug_fission) {
+       configs += [ ":split_dwarf" ]
+     }
+-    cflags = []
+     if (is_mac && !use_dwarf5) {
+       # clang defaults to DWARF2 on macOS unless mac_deployment_target is
+       # at least 10.11.
+@@ -3133,16 +3142,13 @@ config("minimal_symbols") {
+       rustflags += [ "-Zdwarf-version=5" ]
+     }
+ 
+-    cflags += [ "-g1" ]
+-
+     if (is_clang && !is_tsan && !is_asan && current_os != "zos" &&
+-        !use_dwarf5) {
++        !use_dwarf5 && !line_tables_only) {
+       # See comment for -gdwarf-aranges in config("symbols").
+       cflags += [ "-gdwarf-aranges" ]
+     }
+ 
+-    ldflags = []
+-    if (is_android && is_clang) {
++    if (is_android && is_clang && !line_tables_only) {
+       # Android defaults to symbol_level=1 builds, but clang, unlike gcc,
+       # doesn't emit DW_AT_linkage_name in -g1 builds.
+       # -fdebug-info-for-profiling enables that (and a bunch of other things we
+@@ -3152,6 +3158,16 @@ config("minimal_symbols") {
+       cflags += [ "-fdebug-info-for-profiling" ]
+     }
+ 
++    if (!is_clang && line_tables_only) {
++      # On Mac/Linux using Clang/LLVM 15, the -gline-tables-only flag must be the
++      # **last** -gxxx flag. All other flags like -gno-inline-line-tables and
++      # -gno-column-info must come first, otherwise full debuginfo is produced.
++      # On Windows, `clang-cl` does not support the -g1 flag.
++      cflags += [ "-gline-tables-only" ]
++    } else {
++      cflags += [ "-g1" ]
++    }
++
+     # Compressing debug info speeds up "isolate tests" step (https://crbug.com/503797275)
+     # TODO(crbug.com/510291227): Enabling for linux & chromeos breaks
+     # sandbox_linux_unittests's BaselinePolicy tests. Figure out why.
+@@ -3161,6 +3177,7 @@ config("minimal_symbols") {
+ 
+     asmflags = cflags
+   }
++
+   rustflags += [ "-Cdebuginfo=1" ]
+ }
+ 
+diff --git a/config/gclient_args.gni b/config/gclient_args.gni
+new file mode 100644
+index 0000000..e69de29
+diff --git a/config/rust.gni b/config/rust.gni
+index 146007f..8ba36c2 100644
+--- a/config/rust.gni
++++ b/config/rust.gni
+@@ -344,6 +344,16 @@ if (is_linux || is_chromeos) {
+   }
+ }
+ 
++# When targeting musl, rewrite the gnu triple to its musl counterpart
++# (x86_64-unknown-linux-gnu -> x86_64-unknown-linux-musl, etc.) so V8's
++# internal Rust crates + libstd are built for musl. Only the default (target)
++# toolchain is musl; host and snapshot toolchains (which build executable build
++# tools that run on the glibc build host) stay glibc.
++if (use_musl && rust_abi_target != "" &&
++    current_toolchain == default_toolchain) {
++  rust_abi_target = string_replace(rust_abi_target, "-gnu", "-musl")
++}
++
+ if (toolchain_has_rust) {
+   assert(rust_abi_target != "")
+ 
+diff --git a/config/sysroot.gni b/config/sysroot.gni
+index e7aaa18..b8d97a9 100644
+--- a/config/sysroot.gni
++++ b/config/sysroot.gni
+@@ -6,6 +6,7 @@
+ # of the sysroot. If no sysroot applies, the variable will be an empty string.
+ 
+ import("//build/toolchain/sysroot.gni")
++import("//build/toolchain/toolchain.gni")
+ 
+ declare_args() {
+   # The path of the sysroot that is applied when compiling using the target
+@@ -22,7 +23,8 @@ declare_args() {
+ 
+ if (sysroot == "") {
+   if (current_os == target_os && current_cpu == target_cpu &&
+-      target_sysroot != "") {
++      target_sysroot != "" && use_musl &&
++      current_toolchain == default_toolchain) {
+     sysroot = target_sysroot
+   } else if (is_android) {
+     import("//build/config/android/config.gni")
+diff --git a/config/win/BUILD.gn b/config/win/BUILD.gn
+index 1edf103..557b371 100644
+--- a/config/win/BUILD.gn
++++ b/config/win/BUILD.gn
+@@ -120,7 +120,8 @@ config("compiler") {
+     # microarchitecture. MSVC only supports a subset of architectures, and the
+     # next step after SSE2 will be AVX.
+     if (current_cpu == "x86" || current_cpu == "x64") {
+-      cflags += [ "-msse3" ]
++      # TODO(littledivy): current_cpu is set to rust_host_toolchain_arch for clang toolchain?
++      # cflags += [ "-msse3" ]
+     }
+ 
+     # Enable ANSI escape codes if something emulating them is around (cmd.exe
+diff --git a/rust/gni_impl/run_bindgen.py b/rust/gni_impl/run_bindgen.py
+index 1d57eaa..65f171d 100755
+--- a/rust/gni_impl/run_bindgen.py
++++ b/rust/gni_impl/run_bindgen.py
+@@ -90,10 +90,9 @@ def main():
+     # if it's set. In practice we've seen a case where someone had the value set
+     # in their build environment with no intention of it reaching bindgen, leading
+     # to a hard-to-debug build error.
+-    if 'TARGET' in os.environ:
+-        sys.exit(
+-            'ERROR: saw TARGET in environment, remove to avoid bindgen failures'
+-        )
++    # Cargo sets TARGET for the enclosing rusty_v8 build. Use the explicit
++    # GN-generated clang target arguments instead of leaking Cargo's target.
++    os.environ.pop('TARGET', None)
+ 
+     with contextlib.ExitStack() as stack:
+         # Args passed to the actual bindgen cli
+diff --git a/rust/known-target-triples.txt b/rust/known-target-triples.txt
+index fc4780b..4a21c8a 100644
+--- a/rust/known-target-triples.txt
++++ b/rust/known-target-triples.txt
+@@ -43,3 +43,5 @@ x86_64-unknown-fuchsia
+ x86_64-unknown-linux-gnu
+ powerpc64le-unknown-linux-gnu
+ s390x-unknown-linux-gnu
++x86_64-unknown-linux-musl
++aarch64-unknown-linux-musl
+diff --git a/toolchain/linux/BUILD.gn b/toolchain/linux/BUILD.gn
+index fa3d1ba..3dbdf94 100644
+--- a/toolchain/linux/BUILD.gn
++++ b/toolchain/linux/BUILD.gn
+@@ -114,6 +114,16 @@ clang_toolchain("clang_x64") {
+   }
+ }
+ 
++clang_toolchain("clang_x64_glibc") {
++  enable_linker_map = true
++
++  toolchain_args = {
++    current_cpu = "x64"
++    current_os = "linux"
++    use_musl = false
++  }
++}
++
+ template("clang_v8_toolchain") {
+   clang_toolchain(target_name) {
+     toolchain_args = {
+diff --git a/toolchain/toolchain.gni b/toolchain/toolchain.gni
+index 9aafac8..cb2535c 100644
+--- a/toolchain/toolchain.gni
++++ b/toolchain/toolchain.gni
+@@ -28,6 +28,11 @@ declare_args() {
+   # scripts.
+   toolchain_for_rust_host_build_tools = false
+ 
++  # Build the target (C/C++ and Rust) against musl libc instead of
++  # glibc. Scoped to the target toolchain only; host build tools stay
++  # glibc via the toolchain_for_rust_host_build_tools guard.
++  use_musl = false
++
+   # If false, the toolchain overrides `use_partition_alloc_as_malloc` in
+   # PartitionAlloc, to allow use of the system allocator.
+   toolchain_allows_use_partition_alloc_as_malloc = true
+diff --git a/util/LASTCHANGE.committime b/util/LASTCHANGE.committime
+new file mode 100644
+index 0000000..800a224
+--- /dev/null
++++ b/util/LASTCHANGE.committime
+@@ -0,0 +1 @@
++1723023372

@@ -1,0 +1,107 @@
+{
+  "deno_base": "fe7ed012d92c642fd8e5607ac5a45d517538b5c5",
+  "chromium_release": "156.0.8078.47",
+  "chromium_channel": "Stable",
+  "chromium_platform": "Linux",
+  "v8_version": "15.6.75.19",
+  "rusty_v8": {
+    "repository": "https://github.com/denoland/rusty_v8.git",
+    "revision": "55ca54ea97dbfcf80c5457924861b681bd83def2"
+  },
+  "v8": {
+    "repository": "https://github.com/v8/v8.git",
+    "revision": "392e44423f46d75904da712fadea4c7d5d97967f"
+  },
+  "dependencies": [
+    {
+      "path": "build",
+      "repository": "https://chromium.googlesource.com/chromium/src/build.git",
+      "revision": "bc0661cf80717e97e1b6868396f61f7f94f2d04a"
+    },
+    {
+      "path": "tools/clang",
+      "repository": "https://chromium.googlesource.com/chromium/src/tools/clang.git",
+      "revision": "10f700407ca356594ea2a575572b7ce63183721d"
+    },
+    {
+      "path": "third_party/jinja2",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/jinja2.git",
+      "revision": "c3027d884967773057bf74b957e3fea87e5df4d7"
+    },
+    {
+      "path": "third_party/markupsafe",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/markupsafe.git",
+      "revision": "4256084ae14175d38a3ff7d739dca83ae49ccec6"
+    },
+    {
+      "path": "buildtools",
+      "repository": "https://chromium.googlesource.com/chromium/src/buildtools.git",
+      "revision": "c202b4a9dac30e789ed6e3b2354efa94357a56f3"
+    },
+    {
+      "path": "third_party/icu",
+      "repository": "https://chromium.googlesource.com/chromium/deps/icu.git",
+      "revision": "5aa526207171ecadf31597f0980a7b7ad8872f33"
+    },
+    {
+      "path": "third_party/abseil-cpp",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp.git",
+      "revision": "edf0931ff4e2cddfeecade307ae948b5d09b8b38"
+    },
+    {
+      "path": "third_party/fp16/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/Maratyszcza/FP16.git",
+      "revision": "782eea126dc5c755827be751a099eb01826175cf"
+    },
+    {
+      "path": "third_party/libc++/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxx.git",
+      "revision": "97b436da4c33663581d394f4ee0a5977fc38c2f4"
+    },
+    {
+      "path": "third_party/libc++abi/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxxabi.git",
+      "revision": "92767730c5f8350fc53f5b3de5c3c02d00bbab8c"
+    },
+    {
+      "path": "third_party/libunwind/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libunwind.git",
+      "revision": "24a407d5353ad38f948f107c7d6bc2bcbb4bca24"
+    },
+    {
+      "path": "third_party/fast_float/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/fastfloat/fast_float.git",
+      "revision": "b0ab987b3dfdde13fa1915f65ef2a5c068d9208c"
+    },
+    {
+      "path": "third_party/llvm-libc/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libc.git",
+      "revision": "5e61624667bf9e44ea452191dbda0172997018a2"
+    },
+    {
+      "path": "third_party/simdutf",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/simdutf",
+      "revision": "f7356eed293f8208c40b3c1b344a50bd70971983"
+    },
+    {
+      "path": "third_party/highway/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/google/highway.git",
+      "revision": "2607d3b5b0113992fe84d3848859eae13b3b52c1"
+    },
+    {
+      "path": "third_party/partition_alloc",
+      "repository": "https://chromium.googlesource.com/chromium/src/base/allocator/partition_allocator.git",
+      "revision": "a0f30e381c6e132215a0c8d809fd08ff4cdad244"
+    },
+    {
+      "path": "third_party/dragonbox/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/jk-jeon/dragonbox.git",
+      "revision": "beeeef91cf6fef89a4d4ba5e95d47ca64ccb3a44"
+    },
+    {
+      "path": "third_party/rust",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/rust",
+      "revision": "4be2b73f368c8c2a3f5a42c16459b80d7d81b318"
+    }
+  ]
+}

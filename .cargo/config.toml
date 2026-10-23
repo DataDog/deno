@@ -39,6 +39,7 @@ rustflags = [
 # ld64.lld bumped to LLD 20 (LLD 17 segfaults on -fixup_chains; see tools/util.js).
 [env]
 MACOSX_DEPLOYMENT_TARGET = "12.0"
+V8_FROM_SOURCE = { value = "1", force = true }
 
 [target.x86_64-apple-darwin]
 rustflags = [

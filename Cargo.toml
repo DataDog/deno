@@ -1,5 +1,10 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
+# Prepared by tools/upstream_v8/prepare.py. Fail if the custom engine is absent;
+# never silently substitute the published rusty_v8 archive on this branch.
+[patch.crates-io]
+v8 = { path = "target/upstream-v8/rusty_v8" }
+
 [workspace]
 resolver = "2"
 members = [
