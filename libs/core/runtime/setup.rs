@@ -164,11 +164,8 @@ fn v8_init(
   }
 
   let base_flags = concat!(
-    " --no-validate-asm",
     " --turbo_fast_api_calls",
     " --harmony-temporal",
-    " --js-float16array",
-    " --js-explicit-resource-management",
     " --js-source-phase-imports",
     " --js-defer-import-eval",
     // Installs a native `queueMicrotask` on the global object, letting us
