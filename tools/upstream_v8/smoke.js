@@ -20,6 +20,26 @@ const actual = vm.runInNewContext(`(() => {
 assert.equal(actual[0], 2);
 assert.equal(actual[1], 1.1);
 
+// Exercise the updated queue ownership and property callback APIs in both
+// context creation paths, including draining an explicitly owned queue.
+for (const sandbox of [{}, vm.constants.DONT_CONTEXTIFY]) {
+  const context = vm.createContext(sandbox, { microtaskMode: "afterEvaluate" });
+  vm.runInContext(
+    `
+    globalThis.completed = 0;
+    Object.defineProperty(globalThis, "answer", {
+      configurable: true,
+      get() { return 42; },
+      set(value) { globalThis.completed = value; },
+    });
+    Promise.resolve().then(() => { globalThis.answer = 1; });
+  `,
+    context,
+  );
+  assert.equal(context.completed, 1);
+  assert.equal(context.answer, 42);
+}
+
 for (const name of ["read", "write", "net", "env", "run", "sys", "ffi"]) {
   assert.equal((await Deno.permissions.query({ name })).state, "denied");
 }

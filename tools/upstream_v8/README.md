@@ -53,6 +53,11 @@ required by this V8 release. These include Cargo embedding support and
 debug-info settings. The bindgen adaptation removes Cargo's ambient TARGET so
 GN's explicit target arguments determine the bindings.
 
+The Deno changes use scoped local handles for the newer binding API, retain
+owned microtask queue handles in Node VM contexts, and update property callback
+return types. CI runs the core Rust tests and checks both Node VM context
+creation paths with explicitly owned microtask queues.
+
 For the next update, resolve another stable V8 revision, regenerate and review
 the dependency pins, port the embedding patches, update the Cargo lockfile if
 the binding API changes, and pass the native build and runtime tests. Never

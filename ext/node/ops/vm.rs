@@ -353,7 +353,7 @@ impl ContextifyScript {
 }
 
 pub struct ContextifyContext {
-  microtask_queue: *mut v8::MicrotaskQueue,
+  microtask_queue: Option<v8::MicrotaskQueueHandle>,
   context: v8::TracedReference<v8::Context>,
   sandbox: v8::TracedReference<v8::Object>,
   allow_code_gen_wasm: bool,
@@ -368,17 +368,6 @@ unsafe impl deno_core::GarbageCollected for ContextifyContext {
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"ContextifyContext"
-  }
-}
-
-impl Drop for ContextifyContext {
-  fn drop(&mut self) {
-    if !self.microtask_queue.is_null() {
-      // SAFETY: If this isn't null, it is a valid MicrotaskQueue.
-      unsafe {
-        std::ptr::drop_in_place(self.microtask_queue);
-      }
-    }
   }
 }
 
@@ -471,16 +460,23 @@ impl ContextifyContext {
     let tmp = init_global_template(scope, ContextInitMode::UseSnapshot);
 
     let microtask_queue = if own_microtask_queue {
-      v8::MicrotaskQueue::new(scope, v8::MicrotasksPolicy::Explicit).into_raw()
+      Some(v8::MicrotaskQueue::new(
+        scope,
+        v8::MicrotasksPolicy::Explicit,
+      ))
     } else {
-      std::ptr::null_mut()
+      None
     };
 
     let context = create_v8_context(
       scope,
       tmp,
       ContextInitMode::UseSnapshot,
-      microtask_queue,
+      microtask_queue
+        .as_deref()
+        .map_or(std::ptr::null_mut(), |queue| {
+          queue as *const v8::MicrotaskQueue as *mut _
+        }),
     );
 
     let context_state = main_context.get_aligned_pointer_from_embedder_data(
@@ -567,9 +563,12 @@ impl ContextifyContext {
     let main_context = scope.get_current_context();
 
     let microtask_queue = if own_microtask_queue {
-      v8::MicrotaskQueue::new(scope, v8::MicrotasksPolicy::Explicit).into_raw()
+      Some(v8::MicrotaskQueue::new(
+        scope,
+        v8::MicrotasksPolicy::Explicit,
+      ))
     } else {
-      std::ptr::null_mut()
+      None
     };
 
     // Create a vanilla V8 context without global template (no interceptors)
@@ -579,7 +578,9 @@ impl ContextifyContext {
       let ctx = v8::Context::new(
         esc_scope,
         v8::ContextOptions {
-          microtask_queue: Some(microtask_queue),
+          microtask_queue: microtask_queue
+            .as_deref()
+            .map(|queue| queue as *const v8::MicrotaskQueue as *mut _),
           ..Default::default()
         },
       );
@@ -714,12 +715,7 @@ impl ContextifyContext {
   }
 
   fn microtask_queue(&self) -> Option<&v8::MicrotaskQueue> {
-    if self.microtask_queue.is_null() {
-      None
-    } else {
-      // SAFETY: If this isn't null, it is a valid MicrotaskQueue.
-      Some(unsafe { &*self.microtask_queue })
-    }
+    self.microtask_queue.as_deref()
   }
 
   fn get<'a, 'c>(
@@ -998,7 +994,7 @@ fn property_setter<'s>(
   key: v8::Local<'s, v8::Name>,
   value: v8::Local<'s, v8::Value>,
   args: v8::PropertyCallbackArguments<'s>,
-  _rv: v8::ReturnValue<()>,
+  _rv: v8::ReturnValue<v8::Boolean>,
 ) -> v8::Intercepted {
   let Some(ctx) = ContextifyContext::get(scope, args.holder()) else {
     return v8::Intercepted::kNo;
@@ -1114,7 +1110,7 @@ fn property_definer<'s>(
   key: v8::Local<'s, v8::Name>,
   desc: &v8::PropertyDescriptor,
   args: v8::PropertyCallbackArguments<'s>,
-  _: v8::ReturnValue<()>,
+  _: v8::ReturnValue<v8::Boolean>,
 ) -> v8::Intercepted {
   let Some(ctx) = ContextifyContext::get(scope, args.holder()) else {
     return v8::Intercepted::kNo;
@@ -1323,7 +1319,7 @@ fn indexed_property_setter<'s>(
   index: u32,
   value: v8::Local<'s, v8::Value>,
   args: v8::PropertyCallbackArguments<'s>,
-  rv: v8::ReturnValue<()>,
+  rv: v8::ReturnValue<v8::Boolean>,
 ) -> v8::Intercepted {
   let key = uint32_to_name(scope, index);
   property_setter(scope, key, value, args, rv)
@@ -1344,7 +1340,7 @@ fn indexed_property_definer<'s>(
   index: u32,
   descriptor: &v8::PropertyDescriptor,
   args: v8::PropertyCallbackArguments<'s>,
-  rv: v8::ReturnValue<()>,
+  rv: v8::ReturnValue<v8::Boolean>,
 ) -> v8::Intercepted {
   let key = uint32_to_name(scope, index);
   property_definer(scope, key, descriptor, args, rv)
@@ -1845,7 +1841,14 @@ fn resolve_module_context<'s>(
   if let Some(context_object) = context_object {
     let contextify =
       ContextifyContext::from_sandbox_obj(scope, context_object)?;
-    Some((contextify.context(scope), contextify.microtask_queue))
+    Some((
+      contextify.context(scope),
+      contextify
+        .microtask_queue()
+        .map_or(std::ptr::null_mut(), |queue| {
+          queue as *const v8::MicrotaskQueue as *mut _
+        }),
+    ))
   } else {
     Some((scope.get_current_context(), std::ptr::null_mut()))
   }
