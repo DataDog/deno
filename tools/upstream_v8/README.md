@@ -21,6 +21,7 @@ From the repository root:
 python3 -m unittest discover -s tools/upstream_v8 -p '*_test.py'
 python3 tools/upstream_v8/prepare.py --toolchains
 export LIBCLANG_PATH="$PWD/target/upstream-v8/rusty_v8/third_party/llvm-libclang/lib"
+export PATH="$PWD/target/upstream-v8/tools/gn:$PWD/target/upstream-v8/tools/ninja:$PATH"
 cargo build --release --locked -p deno
 python3 tools/upstream_v8/verify.py
 ```

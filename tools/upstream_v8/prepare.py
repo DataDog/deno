@@ -8,6 +8,7 @@ import json
 import platform
 import re
 import subprocess
+import sys
 import tarfile
 import tempfile
 import urllib.request
@@ -138,6 +139,10 @@ def prepare(bindings_only=False, toolchains=False):
             url = download_toolchain(dependencies["third_party/" + name], directory)
             if name == "rust-toolchain":
                 (directory / ".rusty_v8_version").write_text(url)
+        # V8's metagen invokes GN itself, so GN must also be available on PATH
+        # rather than only through rusty_v8's private build-directory lookup.
+        run(sys.executable, SOURCES / "tools/ninja_gn_binaries.py",
+            "--dir", SOURCES.parent / "tools", cwd=SOURCES)
     version_header = (SOURCES / "v8" / "include" / "v8-version.h").read_text()
     parts = [re.search(r"#define V8_" + key + r"\s+(\d+)", version_header).group(1)
              for key in ("MAJOR_VERSION", "MINOR_VERSION", "BUILD_NUMBER", "PATCH_LEVEL")]

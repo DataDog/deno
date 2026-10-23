@@ -52,6 +52,8 @@ jobs:
         run: |
           python3 tools/upstream_v8/prepare.py --toolchains
           echo "LIBCLANG_PATH=$GITHUB_WORKSPACE/target/upstream-v8/rusty_v8/third_party/llvm-libclang/lib" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/target/upstream-v8/tools/gn" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/target/upstream-v8/tools/ninja" >> "$GITHUB_PATH"
       - name: Build Deno from source
         run: cargo build --release --locked -p deno
       - name: Test core against the rebuilt engine
