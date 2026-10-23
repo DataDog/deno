@@ -23,6 +23,7 @@ python3 tools/upstream_v8/prepare.py --toolchains
 export LIBCLANG_PATH="$PWD/target/upstream-v8/rusty_v8/third_party/llvm-libclang/lib"
 export PATH="$PWD/target/upstream-v8/tools/gn:$PWD/target/upstream-v8/tools/ninja:$PATH"
 cargo build --release --locked -p deno
+cargo test --release --locked -p deno_core --lib
 python3 tools/upstream_v8/verify.py
 ```
 
@@ -70,6 +71,10 @@ change only the version string or substitute a newer static archive for older
 bindings.
 
 ## Validation scope
+
+V8 15.6 removes inspector live editing (`Debugger.setScriptSource`). The retired
+`--inspector-live-edit` startup flag is removed, and Deno's inspector-based hot
+module replacement is not supported by this custom runtime.
 
 Packaging requires the expected runtime V8 version, the CVE-2026-11645 property
 regression inside a Node VM context, and deny-permission checks with Synthetics'
