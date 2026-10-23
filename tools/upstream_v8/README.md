@@ -54,6 +54,10 @@ required by this V8 release. These include Cargo embedding support and
 debug-info settings. The bindgen adaptation removes Cargo's ambient TARGET so
 GN's explicit target arguments determine the bindings.
 
+`patches/rusty_v8/0001-v8-15.6-api.patch` adapts removed C++ APIs and accessor
+callbacks, and uses the now-unconditional garbage-collected microtask queues.
+Heap termination is left to the V8 heap destructor, as required by this engine.
+
 The Deno changes use scoped local handles for the newer binding API, retain
 owned microtask queue handles in Node VM contexts, and update property callback
 return types. CI runs the core Rust tests and checks both Node VM context
