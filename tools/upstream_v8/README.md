@@ -59,7 +59,9 @@ GN's explicit target arguments determine the bindings.
 callbacks, and uses the now-unconditional garbage-collected microtask queues.
 Heap termination is left to the V8 heap destructor, as required by this engine.
 Rust bindings are generated before native compilation so header compatibility
-errors fail early.
+errors fail early. The adapter explicitly depends on the bundled ICU target so
+its Unicode headers and static library use the same version, rather than picking
+up system headers.
 
 `patches/bindgen/0001-recursive-union-layout.patch` patches bindgen 0.72.1 at
 `d874de8d646d9b8a3e7ba2db2bcd52f2fba8f1f5`. It avoids computing a layout for an

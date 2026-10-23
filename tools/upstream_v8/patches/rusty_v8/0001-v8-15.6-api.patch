@@ -1,16 +1,17 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 9b16d47..261fad7 100644
+index 9b16d47..42653b0 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -14,6 +14,7 @@ static_library("rusty_v8") {
+@@ -14,6 +14,8 @@ static_library("rusty_v8") {
      "//v8:v8_libplatform",
      "//v8/third_party/inspector_protocol:crdtp",
      "//src/deno_inspector:deno_inspector_protocol",
 +    "//third_party/fp16",
++    "//third_party/icu:icu",
      "//third_party/simdutf:simdutf",
    ]
    configs -= [
-@@ -28,6 +29,7 @@ config("rusty_v8_config") {
+@@ -28,6 +30,7 @@ config("rusty_v8_config") {
      "//v8:external_config",
      "//v8:toolchain",
      "//v8:features",

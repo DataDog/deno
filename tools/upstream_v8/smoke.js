@@ -6,6 +6,18 @@ import vm from "node:vm";
 assert.equal(Deno.version.v8.split("-")[0], "15.6.75.19");
 assert.throws(() => Function("return 42"), EvalError);
 
+// Exercise the bundled ICU data and both default and explicit locales.
+assert.ok(Intl.DateTimeFormat().resolvedOptions().locale);
+assert.equal(
+  new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date("2026-10-23T00:00:00Z")),
+  "10/23/2026",
+);
+
 // CVE-2026-11645: exercise the native property transition in a new context.
 // New VM contexts can enable string compilation independently of the CLI flag.
 const actual = vm.runInNewContext(`(() => {
@@ -54,5 +66,5 @@ assert.throws(
 );
 // deno-lint-ignore no-console
 console.log(
-  "upstream V8 version, VM-context regression, and permission checks passed",
+  "upstream V8 version, ICU, VM-context regression, and permission checks passed",
 );
